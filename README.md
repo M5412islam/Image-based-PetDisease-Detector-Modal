@@ -123,9 +123,9 @@ ModelCheckpoint
 
 📊 Model Performance
 Metric	Value
-Training Accuracy	~90%
-Validation Accuracy	~65–70%
-Expected Test Accuracy	~75–80%
+Training Accuracy: ~94%
+Validation Accuracy: ~78%
+Test Accuracy: 74.56%
 
 ⚠️ Final performance depends on real-world unseen images.
 
