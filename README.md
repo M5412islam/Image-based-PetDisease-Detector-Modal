@@ -1,155 +1,145 @@
-# 🐾 PetCare AI – Disease Detection Model
+PetCare AI – Disease Detection Model
+🔍 Overview
 
-## 📌 Overview
+PetCare AI is a deep learning-based system designed to detect diseases in cats and dogs from images.
+The model analyzes an uploaded pet image and predicts the Top-2 most likely diseases along with confidence scores, followed by relevant medical information.
 
-PetCare AI is a deep learning-based system designed to **identify diseases in cats and dogs using images**.
-The model takes an input image of a pet and predicts the **disease class**, after which the application provides **relevant information such as symptoms, treatment, and precautions**.
+This project is developed as a Final Year Project (FYP) and demonstrates the application of Computer Vision and Deep Learning in veterinary assistance.
 
-This project is developed as part of a Final Year Project (FYP) and focuses on applying **Computer Vision and Deep Learning** in veterinary assistance.
+📁 Dataset
 
----
-## 🔗 Dataset Link
+👉 Dataset Link:
+https://drive.google.com/file/d/1gccZR4Txm61n5gCddXEA3JPD0VaB6rv9/view?usp=drive_link
 
-Access the dataset here:
-👉 https://drive.google.com/file/d/1gccZR4Txm61n5gCddXEA3JPD0VaB6rv9/view?usp=drive_link
+📊 Dataset Characteristics
 
+Total Classes: 21 (Cat + Dog diseases)
 
-## 🧠 Model Details
+Includes:
 
-* **Model Used:** MobileNetV2 (Transfer Learning)
-* **Framework:** TensorFlow / Keras
-* **Approach:**
+Skin diseases
 
-  * Pretrained model (ImageNet)
-  * Fine-tuned on custom dataset
-* **Input Size:** 224 × 224 images
-* **Output:** Multi-class classification (pet diseases)
+Parasitic infections
 
----
+Eye & dental conditions
 
-## ⚙️ How the System Works
+Healthy cases
 
-1. User uploads an image of a pet (cat or dog)
-2. The model processes the image
-3. Predicts the **disease class**
-4. Backend maps the disease to:
+Dataset split:
 
-   * Description
-   * Symptoms
-   * Treatment
-   * Precautions
-5. Results are displayed to the user
+80% Training
 
----
+10% Validation
 
-## 📂 Dataset Structure
+10% Testing
 
-The dataset is organized in a **classification-friendly format** with separate folders for training, validation, and testing.
+🧠 Model Architecture
+🔹 Base Model (Transfer Learning)
 
-```
-dataset/
-│
-├── train/
-│   ├── Cat/
-│   │   ├── alopecia/
-│   │   ├── dental_infection/
-│   │   ├── ear_mites/
-│   │   ├── eye_infection/
-│   │   ├── flea_allergy/
-│   │   ├── fungal_infection/
-│   │   ├── healthy/
-│   │   ├── miliary_dermatitis/
-│   │   ├── ringworm/
-│   │   └── scabies/
-│   │
-│   └── Dog/
-│       ├── bacterial_dermatosis/
-│       ├── demodicosis/
-│       ├── dental_infection/
-│       ├── eye_infection/
-│       ├── flea_allergy/
-│       ├── fungal_infection/
-│       ├── healthy/
-│       ├── hypersensitivity_dermatitis/
-│       ├── mange/
-│       ├── ringworm/
-│       └── scabies/
-│
-├── valid/
-│   ├── Cat/
-│   └── Dog/
-│
-└── test/
-    ├── Cat/
-    └── Dog/
-```
+MobileNetV2
 
----
+Pretrained on ImageNet
 
-## 📊 Dataset Description
+Used as a feature extractor
 
-* Contains images of **cats and dogs with various diseases**
-* Organized into **multiple disease classes**
-* Includes:
+🔹 Why MobileNetV2?
 
-  * Healthy animals
-  * Skin infections
-  * Parasitic diseases
-  * Eye and dental conditions
-* Dataset is split into:
+Lightweight and fast
 
-  * **80% Training**
-  * **10% Validation**
-  * **10% Testing**
+Suitable for mobile deployment (React Native)
 
----
+Good performance on image classification tasks
 
-## 🚀 Training Process
+⚙️ Training Strategy
 
-1. Data preprocessing (rescaling + augmentation)
-2. Load MobileNetV2 (pretrained)
-3. Freeze base layers
-4. Add custom classification layers
-5. Train on dataset
-6. Fine-tune entire model
-7. Evaluate on test data
+The model was trained in two phases:
 
----
+🚀 Phase 1: Feature Extraction
 
-## 📈 Features
+Loaded MobileNetV2 (pretrained weights)
 
-* Multi-class disease classification
-* Supports both **cats and dogs**
-* Lightweight model (suitable for deployment)
-* Scalable for future disease additions
+Frozen all base layers
 
----
+Added custom classification head:
 
-## ⚠️ Limitations
+GlobalAveragePooling
 
-* Model only predicts disease class (not medical diagnosis)
-* Treatment suggestions are **predefined (not AI-generated)**
-* Accuracy depends on dataset quality and balance
+Dense (128 neurons, ReLU)
 
----
+Dropout (0.5)
 
-## 🔮 Future Improvements
+Output layer (21 classes, Softmax)
 
-* Increase dataset size for better accuracy
-* Add more disease categories
-* Integrate real-time camera detection
-* Deploy as a mobile/web application
-* Use advanced models (EfficientNet, Vision Transformers)
+Trained only the top layers
 
----
+🔧 Phase 2: Fine-Tuning
 
-## 👨‍💻 Author
+Unfroze top layers of MobileNetV2
 
-Final Year Project – PetCare AI
-Bachelor’s in Software Engineering
+Fine-tuned deeper layers to adapt to dataset
 
----
+Used low learning rate to avoid destroying pretrained features
 
-## 📢 Note
+🧪 Techniques Used
+✔️ Data Preprocessing
 
-This system is designed for **educational purposes** and should not replace professional veterinary consultation.
+Image resizing (224 × 224)
+
+Normalization
+
+✔️ Data Augmentation (Training only)
+
+Rotation
+
+Zoom
+
+Horizontal flip
+
+Brightness adjustment
+
+✔️ Class Imbalance Handling
+
+Dataset had imbalance (some classes <100 images)
+
+Solved using:
+
+Class Weights
+
+Slight augmentation for minority classes
+
+✔️ Optimization Techniques
+
+Optimizer: Adam
+
+Loss Function: Categorical Crossentropy
+
+Callbacks Used:
+
+EarlyStopping
+
+ReduceLROnPlateau
+
+ModelCheckpoint
+
+📊 Model Performance
+Metric	Value
+Training Accuracy	~90%
+Validation Accuracy	~65–70%
+Expected Test Accuracy	~75–80%
+
+⚠️ Final performance depends on real-world unseen images.
+
+🔄 System Workflow
+User uploads image
+        ↓
+Model processes image
+        ↓
+Predicts Top-2 diseases
+        ↓
+Fetch disease data from backend
+        ↓
+Display:
+  - Disease name
+  - Confidence %
+  - Description
+  - Treatment
