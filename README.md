@@ -42,14 +42,6 @@ Pretrained on ImageNet
 
 Used as a feature extractor
 
-🔹 Why MobileNetV2?
-
-Lightweight and fast
-
-Suitable for mobile deployment (React Native)
-
-Good performance on image classification tasks
-
 ⚙️ Training Strategy
 
 The model was trained in two phases:
