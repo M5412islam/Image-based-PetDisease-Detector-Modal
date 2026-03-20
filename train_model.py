@@ -1,173 +1,167 @@
 import tensorflow as tf
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
-from tensorflow.keras.applications import MobileNetV2
+from tensorflow.keras.applications import EfficientNetB0
+from tensorflow.keras.applications.efficientnet import preprocess_input
 from tensorflow.keras import layers, models
-from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
+from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCheckpoint
 import numpy as np
 import json
 from sklearn.utils.class_weight import compute_class_weight
 
-# =========================
-# 📁 PATHS
-# =========================
+# ========================
+# SETTINGS
+# ========================
+IMG_SIZE = (224, 224)
+BATCH_SIZE = 32
+
 train_dir = "dataset/train"
 val_dir = "dataset/valid"
 test_dir = "dataset/test"
 
-# =========================
-# 🔁 DATA AUGMENTATION (IMPROVED)
-# =========================
+# ========================
+# DATA GENERATORS (FIXED)
+# ========================
 train_gen = ImageDataGenerator(
-    rescale=1./255,
-    rotation_range=25,
-    width_shift_range=0.2,
-    height_shift_range=0.2,
-    shear_range=0.2,
-    zoom_range=0.2,
+    preprocessing_function=preprocess_input,   # ✅ CRITICAL FIX
+    rotation_range=10,
+    zoom_range=0.1,
+    width_shift_range=0.05,
+    height_shift_range=0.05,
     horizontal_flip=True,
-    fill_mode='nearest'
+    brightness_range=[0.9, 1.1]
 )
 
-val_test_gen = ImageDataGenerator(rescale=1./255)
+val_gen = ImageDataGenerator(preprocessing_function=preprocess_input)
+test_gen = ImageDataGenerator(preprocessing_function=preprocess_input)
 
-# =========================
-# 📊 LOAD DATA
-# =========================
 train_data = train_gen.flow_from_directory(
     train_dir,
-    target_size=(224, 224),
-    batch_size=32,
+    target_size=IMG_SIZE,
+    batch_size=BATCH_SIZE,
     class_mode='categorical'
 )
 
-val_data = val_test_gen.flow_from_directory(
+val_data = val_gen.flow_from_directory(
     val_dir,
-    target_size=(224, 224),
-    batch_size=32,
+    target_size=IMG_SIZE,
+    batch_size=BATCH_SIZE,
     class_mode='categorical'
 )
 
-test_data = val_test_gen.flow_from_directory(
+test_data = test_gen.flow_from_directory(
     test_dir,
-    target_size=(224, 224),
-    batch_size=32,
-    class_mode='categorical',
-    shuffle=False
+    target_size=IMG_SIZE,
+    batch_size=BATCH_SIZE,
+    class_mode='categorical'
 )
 
-# =========================
-# 🏷️ SAVE CLASS LABELS
-# =========================
-class_indices = train_data.class_indices
-with open("class_indices.json", "w") as f:
-    json.dump(class_indices, f)
+# ========================
+# CLASS WEIGHTS (CAPPED)
+# ========================
+classes = np.unique(train_data.classes)
 
-print("✅ Classes Saved:", class_indices)
-
-# =========================
-# ⚖️ CLASS WEIGHTS (IMBALANCE FIX)
-# =========================
-classes = train_data.classes
-class_weights = compute_class_weight(
+weights = compute_class_weight(
     class_weight='balanced',
-    classes=np.unique(classes),
-    y=classes
+    classes=classes,
+    y=train_data.classes
 )
 
-class_weights = dict(enumerate(class_weights))
+class_weights = {i: min(w, 3.0) for i, w in enumerate(weights)}
 print("✅ Class Weights:", class_weights)
 
-# =========================
-# 🧠 MODEL BUILDING
-# =========================
-base_model = MobileNetV2(
+# ========================
+# SAVE CLASS LABELS
+# ========================
+with open("class_indices.json", "w") as f:
+    json.dump(train_data.class_indices, f)
+
+# ========================
+# MODEL
+# ========================
+base_model = EfficientNetB0(
     weights='imagenet',
     include_top=False,
     input_shape=(224, 224, 3)
 )
 
-base_model.trainable = False  # Freeze initially
+# Freeze most layers
+base_model.trainable = True
+for layer in base_model.layers[:-100]:
+    layer.trainable = False
 
 model = models.Sequential([
     base_model,
     layers.GlobalAveragePooling2D(),
-    layers.Dense(128, activation='relu'),
+    layers.BatchNormalization(),
+    layers.Dense(256, activation='relu'),
     layers.Dropout(0.5),
-    layers.Dense(len(class_indices), activation='softmax')
+    layers.Dense(len(train_data.class_indices), activation='softmax')
 ])
 
-# =========================
-# ⚙️ COMPILE
-# =========================
+# ========================
+# LOSS (LABEL SMOOTHING)
+# ========================
+loss_fn = tf.keras.losses.CategoricalCrossentropy(label_smoothing=0.1)
+
+# ========================
+# COMPILE
+# ========================
 model.compile(
-    optimizer='adam',
-    loss='categorical_crossentropy',
+    optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001),
+    loss=loss_fn,
     metrics=['accuracy']
 )
 
-model.summary()
+# ========================
+# CALLBACKS
+# ========================
+callbacks = [
+    EarlyStopping(patience=6, restore_best_weights=True),
+    ReduceLROnPlateau(patience=3, factor=0.3),
+    ModelCheckpoint("best_model.keras", save_best_only=True)
+]
 
-# =========================
-# ⏹️ CALLBACKS
-# =========================
-early_stop = EarlyStopping(
-    monitor='val_loss',
-    patience=3,
-    restore_best_weights=True
-)
+# ========================
+# TRAIN (PHASE 1)
+# ========================
+print("\n🚀 Phase 1 Training...\n")
 
-checkpoint = ModelCheckpoint(
-    "best_model.keras",
-    monitor='val_accuracy',
-    save_best_only=True,
-    verbose=1
-)
-
-# =========================
-# 🚀 INITIAL TRAINING
-# =========================
-history = model.fit(
+model.fit(
     train_data,
     validation_data=val_data,
-    epochs=15,
+    epochs=20,
     class_weight=class_weights,
-    callbacks=[early_stop, checkpoint]
+    callbacks=callbacks
 )
 
-# =========================
-# 🔧 FINE-TUNING (UNFREEZE LAST 50 LAYERS)
-# =========================
-print("\n🔧 Fine-tuning started...\n")
+# ========================
+# FINE-TUNING
+# ========================
+print("\n🔧 Fine-tuning...\n")
 
-base_model.trainable = True
-
-for layer in base_model.layers[:-50]:
+for layer in base_model.layers[:-40]:
     layer.trainable = False
 
 model.compile(
-    optimizer=tf.keras.optimizers.Adam(learning_rate=1e-5),
-    loss='categorical_crossentropy',
+    optimizer=tf.keras.optimizers.Adam(learning_rate=0.00001),
+    loss=loss_fn,
     metrics=['accuracy']
 )
 
-history_fine = model.fit(
+model.fit(
     train_data,
     validation_data=val_data,
     epochs=10,
     class_weight=class_weights,
-    callbacks=[early_stop, checkpoint]
+    callbacks=callbacks
 )
 
-# =========================
-# 🧪 TEST EVALUATION
-# =========================
-test_loss, test_acc = model.evaluate(test_data)
+# ========================
+# TEST
+# ========================
+loss, acc = model.evaluate(test_data)
+print(f"\n🔥 FINAL TEST ACCURACY: {acc*100:.2f}%")
 
-print(f"\n✅ Test Accuracy: {test_acc * 100:.2f}%")
+model.save("petcare_model3.keras")
 
-# =========================
-# 💾 SAVE FINAL MODEL
-# =========================
-model.save("petcare_model2.keras")
-
-print("\n🎉 Model training complete and saved as petcare_model2.keras")
+print("\n🎉 Training Complete!")
