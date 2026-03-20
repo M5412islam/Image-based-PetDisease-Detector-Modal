@@ -11,6 +11,9 @@ This project is developed as a Final Year Project (FYP) and demonstrates the app
 👉 Dataset Link:
 https://drive.google.com/file/d/1gccZR4Txm61n5gCddXEA3JPD0VaB6rv9/view?usp=drive_link
 
+👉 Trained Modal Link:
+https://drive.google.com/file/d/1gccZR4Txm61n5gCddXEA3JPD0VaB6rv9/view?usp=drive_link
+
 📊 Dataset Characteristics
 
 Total Classes: 21 (Cat + Dog diseases)
