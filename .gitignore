@@ -1,0 +1,19 @@
+node_modules/
+venv/
+
+# Dataset (too large for GitHub — share via Google Drive)
+dataset/
+temp_not_a_pet/
+
+# Model files (too large — share via Google Drive)
+*.keras
+*.h5
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# OS
+.DS_Store
+Thumbs.db
